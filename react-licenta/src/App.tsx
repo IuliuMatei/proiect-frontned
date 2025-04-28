@@ -8,9 +8,7 @@ import { oktaConfig } from './lib/oktaConfig';
 import { OktaAuth, toRelativeUrl } from '@okta/okta-auth-js';
 import { LoginCallback, SecureRoute, Security, useOktaAuth } from '@okta/okta-react';
 import LoginWidget from './Auth/LoginWidget';
-import ValuesDash from './layouts/Carosel/ValuesDash';
 import Building from './layouts/Building/Building';
-import SensorValuesPage from './layouts/Carosel/SensorValuesPage';
 
 
 
@@ -28,7 +26,7 @@ export const App = () => {
   const history = useHistory();
 
   const restoreOriginalUri = async (_oktaAuth: any, originalUri: any) => {
-    history.replace(toRelativeUrl(originalUri || '/values', window.location.origin));
+    history.replace(toRelativeUrl(originalUri || '/building', window.location.origin));
   }
 
   return (
@@ -51,8 +49,7 @@ export const App = () => {
             }
             />
             <Route path='/login/callback' component={LoginCallback}/>
-            <SecureRoute path='/building' component={ValuesDash} />
-            <SecureRoute path='/sensor-values' component={SensorValuesPage} />
+            <SecureRoute path='/building' component={Building} />
           </Switch>
         </div>
         <Footer />
