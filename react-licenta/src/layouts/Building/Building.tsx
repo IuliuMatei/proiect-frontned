@@ -1,6 +1,9 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import { useState, useEffect } from 'react';
+import { Carousel } from 'react-responsive-carousel';
+import 'react-responsive-carousel/lib/styles/carousel.min.css';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import SensorData from '../../models/SensorData';
 
 const rooms = Array.from({ length: 5 }, (_, floor) =>
@@ -27,7 +30,6 @@ type RoomProps = {
 const Room = ({ position, label, side, isSelected, isHovered, onClick, onHover }: RoomProps) => {
   const color = isSelected ? 'green' : isHovered ? 'lightgreen' : 'skyblue';
 
-  // ✨ Poziție și rotație text în funcție de N/S
   const textPosition = side === 'N' ? [-1.5, 0, 0] : [1.5, 0, 0];
   const textRotation = side === 'N' ? [0, Math.PI / 2, 0] : [0, -Math.PI / 2, 0];
 
@@ -61,6 +63,7 @@ export default function BuildingPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [sensorData, setSensorData] = useState<SensorData | null>(null);
+  const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
 
   useEffect(() => {
     if (selectedRoom) {
@@ -68,9 +71,16 @@ export default function BuildingPage() {
       const side = selectedRoom[1];
       const roomNumber = parseInt(selectedRoom[2]);
 
+      // Fetch valorile actuale
       fetch(`http://localhost:8080/api/sensors/values?floor=${floor}&roomNumber=${roomNumber}&side=${side}`)
         .then((res) => res.json())
         .then((data) => setSensorData(data))
+        .catch(console.error);
+
+      // Fetch istoricul ultimei ore
+      fetch(`http://localhost:8080/api/sensors/valuesLastHour?floor=${floor}&roomNumber=${roomNumber}&side=${side}`)
+        .then((res) => res.json())
+        .then((data) => setSensorHistory(data))
         .catch(console.error);
     }
   }, [selectedRoom]);
@@ -115,30 +125,67 @@ export default function BuildingPage() {
           </Canvas>
         </div>
 
-        {/* Dreapta: Datele senzorilor */}
-        <div className="col-6 d-flex align-items-center justify-content-center bg-white" style={{ height: '100vh' }}>
+        {/* Dreapta: Date și Grafice */}
+        <div className="col-6 d-flex flex-column align-items-center bg-white" style={{ height: '100vh', overflowY: 'auto' }}>
           {sensorData ? (
-            <div className="text-center">
-              <h2 className="display-6 mb-4">Camera selectată: {selectedRoom}</h2>
-              <div className="text-start">
-                <p><strong>Temperatură:</strong> {sensorData.temperatureSensor} °C</p>
-                <p><strong>Umiditate:</strong> {sensorData.humiditySensor} %</p>
-                <p><strong>TVOC:</strong> {sensorData.tvoc} ppb</p>
-                <p><strong>eCO₂:</strong> {sensorData.eCO2} ppm</p>
-                <p><strong>H₂ brut:</strong> {sensorData.rawH2}</p>
-                <p><strong>Eth brut:</strong> {sensorData.rawEth}</p>
-                <p><strong>Sensor MQ2:</strong> {sensorData.mq2Sensor}</p>
-                <p><strong>Etaj:</strong> {sensorData.floor}</p>
-                <p><strong>Număr cameră:</strong> {sensorData.roomNumber}</p>
-                <p><strong>Parte:</strong> {sensorData.side}</p>
-                <p><strong>Foc detectat:</strong> {sensorData.foc ? "Da" : "Nu"}</p>
+            <>
+              <div className="text-center mt-4">
+                <h2 className="display-6 mb-4">Camera selectată: {selectedRoom}</h2>
+                <div className="text-start small">
+                  <p><strong>Temperatură:</strong> {sensorData.temperatureSensor} °C</p>
+                  <p><strong>Umiditate:</strong> {sensorData.humiditySensor} %</p>
+                  <p><strong>TVOC:</strong> {sensorData.tvoc} ppb</p>
+                  <p><strong>eCO₂:</strong> {sensorData.eCO2} ppm</p>
+                  <p><strong>H₂ brut:</strong> {sensorData.rawH2}</p>
+                  <p><strong>Eth brut:</strong> {sensorData.rawEth}</p>
+                  <p><strong>Sensor MQ2:</strong> {sensorData.mq2Sensor}</p>
+                  <p><strong>Foc detectat:</strong> {sensorData.foc ? "Da" : "Nu"}</p>
+                </div>
               </div>
-            </div>
+
+              {/* Carousel cu grafice */}
+              {sensorHistory.length > 0 && (
+                <div className="w-100 p-3">
+                  <Carousel
+                    showThumbs={false}
+                    showStatus={false}
+                    infiniteLoop
+                    autoPlay
+                    interval={5000}
+                    dynamicHeight={false}
+                  >
+                    {renderChart(sensorHistory, 'temperatureSensor', 'Temperatură (°C)', '#8884d8')}
+                    {renderChart(sensorHistory, 'humiditySensor', 'Umiditate (%)', '#82ca9d')}
+                    {renderChart(sensorHistory, 'tvoc', 'TVOC (ppb)', '#ffc658')}
+                    {renderChart(sensorHistory, 'eCO2', 'eCO₂ (ppm)', '#ff7300')}
+                    {renderChart(sensorHistory, 'mq2Sensor', 'Sensor MQ2', '#00c49f')}
+                  </Carousel>
+                </div>
+              )}
+            </>
           ) : (
-            <h4 className="text-muted">Selectează o cameră!</h4>
+            <h4 className="text-muted mt-5">Selectează o cameră!</h4>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// Funcția de randat grafice
+function renderChart(data: SensorData[], dataKey: keyof SensorData, label: string, color: string) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data}>
+        <XAxis
+          dataKey="dateTime"
+          tickFormatter={(str) => new Date(str).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          minTickGap={20}
+        />
+        <YAxis />
+        <Tooltip labelFormatter={(label) => new Date(label).toLocaleTimeString()} />
+        <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
