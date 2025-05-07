@@ -17,18 +17,28 @@ const rooms = Array.from({ length: 5 }, (_, floor) =>
   )
 ).flat();
 
+type RoomStatus = {
+  hasFire: boolean;
+  hasGas: boolean;
+};
+
 type RoomProps = {
   position: [number, number, number];
   label: string;
   side: string;
   isSelected: boolean;
   isHovered: boolean;
+  status: RoomStatus;
   onClick: () => void;
   onHover: (hovering: boolean) => void;
 };
 
-const Room = ({ position, label, side, isSelected, isHovered, onClick, onHover }: RoomProps) => {
-  const color = isSelected ? 'green' : isHovered ? 'lightgreen' : 'skyblue';
+const Room = ({ position, label, side, isSelected, isHovered, status, onClick, onHover }: RoomProps) => {
+  let color = 'skyblue';
+  if (status.hasFire) color = 'red';
+  else if (status.hasGas) color = 'yellow';
+  if (isSelected) color = 'green';
+  else if (isHovered) color = 'lightgreen';
 
   const textPosition = side === 'N' ? [-1.5, 0, 0] : [1.5, 0, 0];
   const textRotation = side === 'N' ? [0, Math.PI / 2, 0] : [0, -Math.PI / 2, 0];
@@ -64,20 +74,51 @@ export default function BuildingPage() {
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [sensorData, setSensorData] = useState<SensorData | null>(null);
   const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
+  const [roomStatusMap, setRoomStatusMap] = useState<Record<string, RoomStatus>>({});
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      const status: Record<string, RoomStatus> = {};
+
+      await Promise.all(rooms.map(async (room) => {
+        const { floor, roomNumber, side } = room;
+        const roomId = `${floor}${side}${roomNumber}`;
+
+        try {
+          const res = await fetch(`http://localhost:8080/api/sensors/values?floor=${floor}&roomNumber=${roomNumber}&side=${side}`);
+          const data = await res.json();
+          status[roomId] = {
+            hasFire: data.foc === 1,
+            hasGas: data.mq2Sensor > 100
+          };
+        } catch (error) {
+          console.error(`Eroare la camera ${roomId}:`, error);
+          status[roomId] = { hasFire: false, hasGas: false };
+        }
+      }));
+
+      setRoomStatusMap(status);
+    };
+
+    fetchStatuses();
+    const interval = setInterval(fetchStatuses, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (selectedRoom) {
-      const floor = parseInt(selectedRoom[0]);
-      const side = selectedRoom[1];
-      const roomNumber = parseInt(selectedRoom[2]);
+      const match = selectedRoom.match(/^(\d)([NS])(\d)$/);
+      if (!match) return;
 
-      // Fetch valorile actuale
+      const [, floorStr, side, roomStr] = match;
+      const floor = parseInt(floorStr);
+      const roomNumber = parseInt(roomStr);
+
       fetch(`http://localhost:8080/api/sensors/values?floor=${floor}&roomNumber=${roomNumber}&side=${side}`)
         .then((res) => res.json())
         .then((data) => setSensorData(data))
         .catch(console.error);
 
-      // Fetch istoricul ultimei ore
       fetch(`http://localhost:8080/api/sensors/valuesLastHour?floor=${floor}&roomNumber=${roomNumber}&side=${side}`)
         .then((res) => res.json())
         .then((data) => setSensorHistory(data))
@@ -88,7 +129,6 @@ export default function BuildingPage() {
   return (
     <div className="container-fluid h-100">
       <div className="row h-100">
-        {/* Stânga: Clădirea 3D */}
         <div className="col-6 p-0 bg-light" style={{ height: '100vh' }}>
           <Canvas camera={{ position: [0, 20, 40], fov: 45 }}>
             <ambientLight intensity={0.7} />
@@ -100,6 +140,7 @@ export default function BuildingPage() {
               const z = (room.roomNumber - 2.5) * 5;
               const roomId = `${room.floor}${room.side}${room.roomNumber}`;
               const label = `${room.roomNumber}${room.side}`;
+              const status = roomStatusMap[roomId] || { hasFire: false, hasGas: false };
 
               return (
                 <Room
@@ -109,6 +150,7 @@ export default function BuildingPage() {
                   side={room.side}
                   isSelected={selectedRoom === roomId}
                   isHovered={hoveredRoom === roomId}
+                  status={status}
                   onClick={() => setSelectedRoom(roomId)}
                   onHover={(hovering) => setHoveredRoom(hovering ? roomId : null)}
                 />
@@ -125,7 +167,6 @@ export default function BuildingPage() {
           </Canvas>
         </div>
 
-        {/* Dreapta: Date și Grafice */}
         <div className="col-6 d-flex flex-column align-items-center bg-white" style={{ height: '100vh', overflowY: 'auto' }}>
           {sensorData ? (
             <>
@@ -143,7 +184,6 @@ export default function BuildingPage() {
                 </div>
               </div>
 
-              {/* Carousel cu grafice */}
               {sensorHistory.length > 0 && (
                 <div className="w-100 p-3">
                   <Carousel
@@ -172,7 +212,6 @@ export default function BuildingPage() {
   );
 }
 
-// Funcția de randat grafice
 function renderChart(data: SensorData[], dataKey: keyof SensorData, label: string, color: string) {
   return (
     <ResponsiveContainer width="100%" height={300}>
