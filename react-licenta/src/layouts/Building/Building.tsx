@@ -199,6 +199,8 @@ export default function BuildingPage() {
                     {renderChart(sensorHistory, 'humiditySensor', 'Umiditate (%)', '#82ca9d')}
                     {renderChart(sensorHistory, 'tvoc', 'TVOC (ppb)', '#ffc658')}
                     {renderChart(sensorHistory, 'eCO2', 'eCO₂ (ppm)', '#ff7300')}
+                    {renderChart(sensorHistory, 'rawEth', 'rawEth', '#ff7300')}
+                    {renderChart(sensorHistory, 'rawH2', 'rawH2', '#ff7300')}
                     {renderChart(sensorHistory, 'mq2Sensor', 'Sensor MQ2', '#00c49f')}
                   </Carousel>
                 </div>
