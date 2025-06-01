@@ -85,7 +85,8 @@ export default function BuildingPage() {
         const roomId = `${floor}${side}${roomNumber}`;
 
         try {
-          const res = await fetch(`http://localhost:8080/api/sensors/values?floor=${floor}&roomNumber=${roomNumber}&side=${side}`);
+          const res = await fetch(`http://localhost:8080/api/sensors/values?floor=${floor}&
+            roomNumber=${roomNumber}&side=${side}`);
           const data = await res.json();
           status[roomId] = {
             hasFire: data.foc === 1,
@@ -101,7 +102,7 @@ export default function BuildingPage() {
     };
 
     fetchStatuses();
-    const interval = setInterval(fetchStatuses, 10000);
+    const interval = setInterval(fetchStatuses, 5000);
     return () => clearInterval(interval);
   }, []);
 
