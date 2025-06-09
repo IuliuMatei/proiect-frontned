@@ -13,10 +13,6 @@ import {
 } from 'recharts';
 import SensorData from '../../models/SensorData';
 
-/* --------------------------------------------------
-   Helpers & constants
--------------------------------------------------- */
-
 const rooms = Array.from({ length: 5 }, (_, floor) =>
   ['N', 'S'].flatMap((side) =>
     Array.from({ length: 4 }, (_, room) => ({
@@ -27,10 +23,6 @@ const rooms = Array.from({ length: 5 }, (_, floor) =>
     })),
   ),
 ).flat();
-
-/* --------------------------------------------------
-   Types
--------------------------------------------------- */
 
 type RoomStatus = { hasFire: boolean; hasGas: boolean };
 
@@ -44,10 +36,6 @@ interface RoomProps {
   onHover: (h: boolean) => void;
 }
 
-/* --------------------------------------------------
-   Room component
--------------------------------------------------- */
-
 const Room = ({
   position,
   label,
@@ -57,16 +45,14 @@ const Room = ({
   onClick,
   onHover,
 }: RoomProps) => {
-  const [x] = position; // ­­x < 0 → N · x > 0 → S
+  const [x] = position;
 
-  /* colour */
   let color = 'skyblue';
   if (status.hasFire) color = 'red';
   else if (status.hasGas) color = 'yellow';
   if (isSelected) color = 'green';
   else if (isHovered) color = 'lightgreen';
 
-  /* label on interior face (toward corridor) */
   const labelPos: [number, number, number] = x < 0 ? [-1.4, 0, 0] : [1.4, 0, 0];
   const labelRot: [number, number, number] = x < 0 ? [0, -Math.PI / 2, 0] : [0, Math.PI / 2, 0];
 
@@ -96,10 +82,6 @@ const Room = ({
   );
 };
 
-/* --------------------------------------------------
-   Main component
--------------------------------------------------- */
-
 export default function BuildingPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
@@ -109,7 +91,6 @@ export default function BuildingPage() {
     Record<string, RoomStatus>
   >({});
 
-  /* live status for all rooms */
   useEffect(() => {
     const fetchStatuses = async () => {
       const status: Record<string, RoomStatus> = {};
@@ -140,7 +121,6 @@ export default function BuildingPage() {
     return () => clearInterval(id);
   }, []);
 
-  /* selected room data */
   useEffect(() => {
     if (!selectedRoom) return;
     const m = selectedRoom.match(/^(\d)([NS])(\d)$/);
@@ -167,16 +147,13 @@ export default function BuildingPage() {
 
   const floorLabels = ['Etaj 5', 'Etaj 4', 'Etaj 3', 'Etaj 2', 'Etaj 1'];
 
-  /* -------------------------------------------------- */
   return (
     <div className='container-fluid h-100'>
       <div className='row h-100'>
-        {/* 3D column */}
         <div
           className='col-6 p-0 bg-light position-relative'
           style={{ height: '100vh' }}
         >
-          {/* title */}
           <h3
             className='w-100 text-center position-absolute'
             style={{ top: 5, pointerEvents: 'none', zIndex: 10 }}
@@ -185,7 +162,7 @@ export default function BuildingPage() {
           </h3>
 
 {[1, 2, 3, 4, 5].map((f) => {
-  const topPercent = 70 - (f - 1) * 13;   //  Etaj 1 → 86 %,  Etaj 5 → 6 %
+  const topPercent = 70 - (f - 1) * 13;
   return (
     <span
       key={f}
@@ -204,7 +181,6 @@ export default function BuildingPage() {
   );
 })}
 
-          {/* 3-D scene */}
           <Canvas camera={{ position: [0, 20, 40], fov: 45 }}>
             <ambientLight intensity={0.7} />
             <directionalLight position={[10, 20, 10]} intensity={1} />
@@ -242,7 +218,6 @@ export default function BuildingPage() {
           </Canvas>
         </div>
 
-        {/* right column – sensors */}
         <div
           className='col-6 d-flex flex-column align-items-center bg-white'
           style={{ height: '100vh', overflowY: 'auto' }}
@@ -340,10 +315,6 @@ export default function BuildingPage() {
     </div>
   );
 }
-
-/* --------------------------------------------------
-   Utility – chart renderer
--------------------------------------------------- */
 
 function renderChart(
   data: SensorData[],

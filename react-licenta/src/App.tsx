@@ -9,6 +9,7 @@ import { OktaAuth, toRelativeUrl } from '@okta/okta-auth-js';
 import { LoginCallback, SecureRoute, Security, useOktaAuth } from '@okta/okta-react';
 import LoginWidget from './Auth/LoginWidget';
 import Building from './layouts/Building/Building';
+import { About } from './about/About';
 
 
 
@@ -37,6 +38,9 @@ export const App = () => {
           <Switch>
             <Route path='/' exact>
               <Redirect to='homepage' />
+            </Route>
+            <Route path='/about'>
+              <About/>
             </Route>
             <Route path='/building'>
               <Building/>
